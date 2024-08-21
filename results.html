@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <style>
+        /* Summary box styling */
+        #summaryDisplay {
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        /* Bullet list styling */
+        #summaryText ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        #summaryText ul li {
+            margin-bottom: 10px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Highlighting keywords */
+        #summaryText strong {
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Heading styles */
+        #summaryDisplay h2 {
+            font-family: 'Arial', sans-serif;
+            font-size: 24px;
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        /* Button styling */
+        #downloadSummaryButton {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #downloadSummaryButton:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scholarly Information Results</h1>
+        <div id="results" class="table-container">
+            {{ results | safe }}
+        </div>
+        <button id="downloadButton" type="button" onclick="window.location.href='{{ url_for('download') }}'">Download CSV</button>
+        <button id="backButton" type="button" onclick="window.location.href='{{ url_for('index') }}'">Back</button>
+
+        <!-- Summary Section -->
+        <div id="summary-section">
+            <label for="authorDropdown">Select Author:</label>
+            <select id="authorDropdown">
+                {% for author in authors %}
+                    <option value="{{ author }}">{{ author }}</option>
+                {% endfor %}
+            </select>
+            <button id="generateSummaryButton" type="button">Generate Summary</button>
+        </div>
+
+        <!-- Summary Display -->
+        <div id="summaryDisplay" style="display:none;">
+            <h2>Author Summary</h2>
+            <div id="summaryText"></div>
+            <button id="downloadSummaryButton" type="button" style="display:none;" onclick="downloadSummary()">Download Summary</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var table = $('#results table').DataTable({
+                initComplete: function () {
+                    this.api().columns().every(function () {
+                        var column = this;
+                        var select = $('<select><option value="">Select All</option></select>')
+                            .appendTo($(column.header()).empty())
+                            .on('change', function () {
+                                var val = $(this).val();
+                                if (val === "") {
+                                    column.search('').draw();
+                                } else {
+                                    var searchVal = $.fn.dataTable.util.escapeRegex(val);
+                                    column.search(searchVal ? '^' + searchVal + '$' : '', true, false).draw();
+                                }
+                            });
+
+                        column.data().unique().sort().each(function (d, j) {
+                            select.append('<option value="' + d + '">' + d + '</option>');
+                        });
+                    });
+                },
+                responsive: true,
+                autoWidth: true,
+            });
+
+            // Handle Generate Summary button click
+            $('#generateSummaryButton').click(function() {
+                var author = $('#authorDropdown').val();
+                if (author) {
+                    $.post('{{ url_for("summary") }}', { author: author }, function(data) {
+                        var bulletSummary = "<ul>";
+                        data.summary.split('. ').forEach(function(sentence) {
+                            bulletSummary += "<li>" + sentence.trim() + "</li>";
+                        });
+                        bulletSummary += "</ul>";
+
+                        $('#summaryText').html(bulletSummary);
+                        $('#summaryDisplay').show();
+                        $('#downloadSummaryButton').show();
+                    });
+                } else {
+                    alert('Please select an author.');
+                }
+            });
+
+            // Handle Download Summary button click
+            window.downloadSummary = function() {
+                var author = $('#authorDropdown').val();
+                if (author) {
+                    window.location.href = '{{ url_for("download_summary") }}?author=' + encodeURIComponent(author);
+                } else {
+                    alert('Please select an author.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
