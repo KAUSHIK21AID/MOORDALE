@@ -1,0 +1,175 @@
+/* General Styling */
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #f7f7f7, #e0e0e0); /* Subtle gradient background */
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-image: url('https://cdn.pixabay.com/photo/2017/07/05/09/47/background-2471630_960_720.jpg'); /* Background image */
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+/* Container Styling */
+.container {
+    max-width: 900px; /* Increased container width */
+    margin: 20px auto;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent background */
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    text-align: center; /* Center align text and form elements */
+}
+
+/* File Input Styling */
+input[type="file"] {
+    display: none; /* Hide the default file input */
+}
+
+label[for="file"] {
+    display: inline-block;
+    padding: 8px 16px; /* Reduced padding */
+    background-color: #4caf50; /* Changed color to green */
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px; /* Reduced font size */
+    margin: 20px 0; /* Margin around file input label */
+    text-align: center;
+}
+
+input[type="file"]:valid + label::after {
+    content: ''; /* Remove default text */
+}
+
+/* Button Styling */
+button {
+    padding: 8px 16px; /* Reduced button size */
+    margin-top: 15px; /* Add margin above the button */
+    margin-right: 10px; /* Add space between buttons */
+    background-color: #4caf50; /* Changed button color to green */
+    color: #fff;
+    border: 1px solid #388e3c; /* Add border */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px; /* Adjusted font size */
+}
+
+button:hover {
+    background-color: #388e3c; /* Darker green on hover */
+}
+
+/* Progress bar */
+.progress {
+    height: 30px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    margin: 20px 0; /* Add gap above and below the progress bar */
+    position: relative;
+}
+
+.progress-bar {
+    background-color: #4caf50; /* Green color for progress bar */
+    line-height: 30px;
+    color: #fff;
+    text-align: center;
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out; /* Smooth glide effect */
+}
+
+/* Table Styling */
+.table-container {
+    margin-top: 20px; /* Add gap above the table */
+    overflow-x: auto;
+    text-align: left;
+}
+
+table.dataTable {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* Fixed table layout to prevent horizontal scrolling */
+}
+
+table.dataTable thead th {
+    background-color: #4caf50; /* Changed to green */
+    color: #fff;
+    padding: 8px; /* Reduced padding */
+    text-align: center;
+    position: sticky; /* Make column headers sticky */
+    top: 0;
+    white-space: nowrap; /* Prevent column headers from wrapping */
+}
+
+table.dataTable thead th select {
+    color: #000;
+    margin-left: 5px; /* Ensure dropdown filter is adjacent to column name */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+table.dataTable th,
+table.dataTable td {
+    padding: 6px; /* Reduced padding */
+    overflow: hidden; /* Hide overflow content */
+    text-overflow: ellipsis; /* Show ellipsis for overflow content */
+    white-space: nowrap; /* Prevent cell content from wrapping */
+}
+
+table.dataTable th.title-column { /* Specific styling for title column */
+    width: 20%; /* Adjust width as needed */
+}
+
+table.dataTable tr:nth-child(even) {
+    background-color: #f9f9f9; /* Lighter row color */
+}
+
+table.dataTable tr:hover {
+    background-color: #e0e0e0; /* Slightly darker row color on hover */
+}
+
+/* Loader Styling */
+.loader {
+    border: 16px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 16px solid #4caf50; /* Green color for loader */
+    width: 100px; /* Reduced size */
+    height: 100px; /* Reduced size */
+    animation: spin 2s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading {
+    text-align: center;
+}
+
+/* Summary Page Styling */
+.summary-container {
+    margin-top: 20px;
+}
+
+.summary-container h1 {
+    margin-bottom: 20px;
+}
+
+.summary-container select {
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+.summary-container button {
+    margin: 10px 5px;
+}
+
+.summary-container .summary-text {
+    margin-top: 20px;
+    text-align: left;
+}
