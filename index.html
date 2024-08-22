@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <nav class="navbar">
+        <div class="container">
+            <span class="navbar-brand">ScholarSync</span>
+        </div>
+    </nav>
     <div class="container">
         <h1>Upload CSV to Retrieve Scholarly Information</h1>
         <form id="uploadForm" method="POST" enctype="multipart/form-data" action="{{ url_for('upload') }}">
@@ -17,13 +22,7 @@
             <button type="submit">Upload</button>
         </form>
 
-        <!-- Horizontal Progress Bar -->
-        <div id="progressWrapper" style="display:none;">
-            <div class="progress">
-                <div class="progress-bar" role="progressbar" style="width: 0%;" id="progress-bar"></div>
-            </div>
-        </div>
-
+        <!-- Loader -->
         <div id="loading" style="display:none;">
             <div class="loader"></div>
             <p>Loading results...</p>
@@ -40,19 +39,19 @@
         $(document).ready(function () {
             $('#uploadForm').on('submit', function (e) {
                 e.preventDefault();
-                $('#progressWrapper').show();
-                $('#loading').hide();
+                $('#loading').show(); // Show the loader
+                $('#loading p').text('Uploading...'); // Optional: Update text during upload
 
                 var formData = new FormData(this);
                 $.ajax({
                     xhr: function() {
                         var xhr = new XMLHttpRequest();
                         xhr.upload.addEventListener('progress', function(e) {
+                            // Optional: Handle progress (e.g., update a progress bar or message)
                             if (e.lengthComputable) {
                                 var percentComplete = Math.round((e.loaded / e.total) * 100);
-                                $('#progress-bar').css('width', percentComplete + '%');
                                 if (percentComplete === 100) {
-                                    $('#progress-bar').text('Processing...');
+                                    $('#loading p').text('Processing...');
                                 }
                             }
                         }, false);
@@ -67,7 +66,7 @@
                         window.location.href = '{{ url_for("results") }}';
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
-                        $('#progressWrapper').hide();
+                        $('#loading').hide();
                         alert('An error occurred: ' + errorThrown);
                     }
                 });
