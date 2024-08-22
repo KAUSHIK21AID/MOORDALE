@@ -5,149 +5,283 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Summary box styling */
-        #summaryDisplay {
-            border: 2px solid #4CAF50;
-            border-radius: 10px;
+        .summary-box {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Add custom styles for the summary box */
+        .summary-card {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            background-color: #f9f9f9;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
+            margin: 10px;
+            width: 300px;
+            text-align: left;
+            display: inline-block;
         }
 
-        /* Bullet list styling */
-        #summaryText ul {
-            list-style-type: disc;
-            padding-left: 20px;
+        .summary-card h3 {
+            margin-top: 0;
+            color: #4caf50;
         }
 
-        #summaryText ul li {
-            margin-bottom: 10px;
-            font-size: 16px;
-            line-height: 1.6;
+        .summary-card p {
+            margin: 10px 0;
         }
 
-        /* Highlighting keywords */
-        #summaryText strong {
-            font-weight: bold;
-            color: #333;
-        }
-
-        /* Heading styles */
-        #summaryDisplay h2 {
-            font-family: 'Arial', sans-serif;
-            font-size: 24px;
-            color: #4CAF50;
-            text-align: center;
-        }
-
-        /* Button styling */
-        #downloadSummaryButton {
-            display: block;
+        /* Chart styling */
+        #summaryChart {
+            max-width: 100%;
+            height: 400px; /* Increased height for better visibility */
             margin: 20px auto;
-            padding: 10px 20px;
-            background-color: #4CAF50;
+        }
+
+        /* Optional: Styling for button */
+        .button {
+            background-color: #4caf50;
             color: white;
+            padding: 10px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
         }
 
-        #downloadSummaryButton:hover {
-            background-color: #45a049;
+        .dropdown-container {
+            margin-bottom: 20px;
+        }
+
+        /* Summary Formatting */
+        .summary-box {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+
+        .summary-box ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+
+        .summary-box li {
+            margin-bottom: 20px; /* Added space between points */
+        }
+
+        .summary-box h3 {
+            color: #4caf50;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Scholarly Information Results</h1>
-        <div id="results" class="table-container">
-            {{ results | safe }}
+    <nav class="navbar">
+        <div class="container">
+            <span class="navbar-brand">ScholarSync</span>
         </div>
-        <button id="downloadButton" type="button" onclick="window.location.href='{{ url_for('download') }}'">Download CSV</button>
-        <button id="backButton" type="button" onclick="window.location.href='{{ url_for('index') }}'">Back</button>
-
-        <!-- Summary Section -->
-        <div id="summary-section">
-            <label for="authorDropdown">Select Author:</label>
-            <select id="authorDropdown">
-                {% for author in authors %}
-                    <option value="{{ author }}">{{ author }}</option>
-                {% endfor %}
-            </select>
-            <button id="generateSummaryButton" type="button">Generate Summary</button>
-        </div>
-
-        <!-- Summary Display -->
-        <div id="summaryDisplay" style="display:none;">
-            <h2>Author Summary</h2>
-            <div id="summaryText"></div>
-            <button id="downloadSummaryButton" type="button" style="display:none;" onclick="downloadSummary()">Download Summary</button>
-        </div>
+    </nav>
+<div class="container">
+    <h1>Results</h1>
+    <!-- Table for displaying results -->
+    <div id="resultsTableContainer">
+        {{ results | safe }}
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            var table = $('#results table').DataTable({
-                initComplete: function () {
-                    this.api().columns().every(function () {
-                        var column = this;
-                        var select = $('<select><option value="">Select All</option></select>')
-                            .appendTo($(column.header()).empty())
-                            .on('change', function () {
-                                var val = $(this).val();
-                                if (val === "") {
-                                    column.search('').draw();
-                                } else {
-                                    var searchVal = $.fn.dataTable.util.escapeRegex(val);
-                                    column.search(searchVal ? '^' + searchVal + '$' : '', true, false).draw();
+    <div class="dropdown-container">
+        <select id="authorDropdown" class="dropdown">
+            <option value="">Select an Author</option>
+            {% for author in authors %}
+                <option value="{{ author }}">{{ author }}</option>
+            {% endfor %}
+        </select>
+
+        <button id="viewAnalysisButton" class="button">View Analysis</button>
+        <button id="generateSummaryButton" class="button">Generate Summary</button>
+        <button id="downloadSummaryButton" class="button">Download Summary</button>
+    </div>
+
+    <!-- Analysis Table -->
+    <div id="analysisTableContainer" style="display:none;">
+        <h2>Analysis</h2>
+        <p id="hIndexDescription" style="display:none;">The h-index is a metric that measures an author's scholarly output and performance by counting the number of publications that have been cited at least as many times as the author's h-index.</p>
+        <p id="i10IndexDescription" style="display:none;">The author i10-index is the number of articles published by an author that have received at least 10 citations.</p>
+        <div id="analysisTable"></div>
+        <canvas id="summaryChart" width="800" height="400"></canvas> <!-- Increased width and height -->
+    </div>
+
+    <!-- Summary Container -->
+    <div id="summaryContainer" style="display:none; background-color: azure;">
+        <h2>Customized Summary</h2>
+        <div id="summaryBox" class="summary-box"></div>
+    </div>
+
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable with column filtering
+        var table = $('.dataTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            "info": true
+        });
+
+        // Setup - add a text input to each header cell for column filtering
+        $('#resultsTableContainer thead th').each(function() {
+            var title = $(this).text();
+            $(this).html(title + '<br><select><option value="">All</option></select>');
+        });
+
+        // Apply the search
+        table.columns().every(function() {
+            var column = this;
+            var select = $(column.header()).find('select');
+            column.data().unique().sort().each(function(d, j) {
+                select.append('<option value="' + d + '">' + d + '</option>');
+            });
+            select.on('change', function() {
+                var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                column.search(val ? '^' + val + '$' : '', true, false).draw();
+            });
+        });
+
+        // View Analysis button functionality
+        $('#viewAnalysisButton').click(function() {
+            $.post('{{ url_for("view_analysis") }}', {}, function(data) {
+                $('#analysisTable').html(data.analysis);
+                $('#analysisTableContainer').show();
+
+                // Prepare data for Chart.js
+                var chartData = {
+                    labels: [], // Years
+                    datasets: [] // Data for each author
+                };
+
+                // Collect data from the table
+                var rows = $('#analysisTable').find('tr').slice(1); // Skip header row
+
+                var authors = {};
+                rows.each(function() {
+                    var cells = $(this).find('td');
+                    var author = $(cells[0]).text();
+                    var year = $(cells[1]).text();
+                    var jif = parseFloat($(cells[2]).text());
+
+                    if (!chartData.labels.includes(year)) {
+                        chartData.labels.push(year);
+                    }
+
+                    if (!authors[author]) {
+                        authors[author] = [];
+                    }
+
+                    // Add data point for the author
+                    authors[author].push({
+                        x: year,
+                        y: jif
+                    });
+                });
+
+                // Convert authors object to datasets array
+                for (var author in authors) {
+                    if (authors.hasOwnProperty(author)) {
+                        chartData.datasets.push({
+                            label: author,
+                            data: authors[author],
+                            borderColor: getRandomColor(),
+                            backgroundColor: 'rgba(0, 0, 0, 0)',
+                            fill: false
+                        });
+                    }
+                }
+
+                // Initialize Chart.js
+                var ctx = document.getElementById('summaryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'category',
+                                labels: chartData.labels,
+                                title: {
+                                    display: true,
+                                    text: 'Year'
                                 }
-                            });
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'JIF'
+                                }
+                            }
+                        }
+                    }
+                });
 
-                        column.data().unique().sort().each(function (d, j) {
-                            select.append('<option value="' + d + '">' + d + '</option>');
-                        });
-                    });
-                },
-                responsive: true,
-                autoWidth: true,
+                $('#summaryChart').show();
+                $('#hIndexDescription').show();
+                $('#i10IndexDescription').show();
             });
+        });
 
-            // Handle Generate Summary button click
-            $('#generateSummaryButton').click(function() {
-                var author = $('#authorDropdown').val();
-                if (author) {
-                    $.post('{{ url_for("summary") }}', { author: author }, function(data) {
-                        var bulletSummary = "<ul>";
-                        data.summary.split('. ').forEach(function(sentence) {
-                            bulletSummary += "<li>" + sentence.trim() + "</li>";
-                        });
-                        bulletSummary += "</ul>";
-
-                        $('#summaryText').html(bulletSummary);
-                        $('#summaryDisplay').show();
-                        $('#downloadSummaryButton').show();
-                    });
-                } else {
-                    alert('Please select an author.');
-                }
-            });
-
-            // Handle Download Summary button click
-            window.downloadSummary = function() {
-                var author = $('#authorDropdown').val();
-                if (author) {
-                    window.location.href = '{{ url_for("download_summary") }}?author=' + encodeURIComponent(author);
-                } else {
-                    alert('Please select an author.');
-                }
+        // Generate Summary button functionality
+        $('#generateSummaryButton').click(function() {
+            var author = $('#authorDropdown').val();
+            if (author) {
+                $.post('{{ url_for("summary") }}', { author: author }, function(data) {
+                    $('#summaryBox').html('<ul>' + data.summary.split('\n').map(function(item) {
+                        return '<li>' + item + '</li>';
+                    }).join('') + '</ul>');
+                    $('#summaryContainer').show();
+                    // Ensure chart remains visible
+                    $('#summaryChart').show();
+                });
+            } else {
+                alert('Please select an author.');
             }
         });
-    </script>
+
+        // Download Summary button functionality
+        $('#downloadSummaryButton').click(function() {
+            var author = $('#authorDropdown').val();
+            if (author) {
+                window.location.href = '{{ url_for("download_summary") }}?author=' + author;
+            } else {
+                alert('Please select an author.');
+            }
+        });
+
+        // Helper function to generate random colors for chart lines
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    });
+</script>
+
 </body>
 </html>
