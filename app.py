@@ -6,8 +6,12 @@ from docx import Document
 import google.generativeai as genai
 from scholarly import scholarly
 import concurrent.futures
+import matplotlib.pyplot as plt
+import seaborn as sns
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.secret_key = 'supersecretkey'  # Ensure you have a secret key for sessions and flash messages
 
 # Initialize Google Generative AI
@@ -18,6 +22,52 @@ model = genai.GenerativeModel('gemini-1.5-flash-latest')
 processed_df = None  # Placeholder for DataFrame
 results_html = None  # Placeholder for HTML table
 
+# Function to analyze author data
+def d_analysis(author_name):
+  search_query = scholarly.search_author(author_name)
+  first_author_result = next(search_query)
+  author = scholarly.fill(first_author_result)
+  years = []
+  for i in author['publications']:
+    years.append(i['bib'].get('pub_year'))
+  yy = [year for year in years if year is not None]
+
+  hindex = author['hindex']
+  iindex = author['i10index']
+  year_count = {}
+
+
+  for year in yy:
+      if year in year_count:
+          year_count[year] += 1
+      else:
+          year_count[year] = 1
+
+  ordered_year_count = dict(sorted(year_count.items()))
+  jif=[]
+  yearlist=[]
+  for key, val in author['cites_per_year'].items():
+    sum = 0
+    for kk, val in ordered_year_count.items():
+      if(int(kk)==key-1 or int(kk)==key-2):
+        sum = sum + val
+      elif(int(kk)>key-1):
+        break
+    if(sum==0):
+      continue
+    jif.append(val/sum)
+    yearlist.append(key)
+
+    d_a = pd.DataFrame()
+    d_a['Author'] = [author_name]*len(jif)
+    d_a['Year'] = yearlist
+    d_a['JIF'] = jif
+    d_a['H-index'] = [hindex]*len(jif)
+    d_a['I-index'] = [iindex]*len(jif)
+
+
+  return d_a
+
 # Function to retrieve scholarly information
 def retrieve_stuffs(author_name, institution_name):
     try:
@@ -26,30 +76,25 @@ def retrieve_stuffs(author_name, institution_name):
         first_author_result = next(search_result)
         author = scholarly.fill(first_author_result)
 
-        titles = []
-        years = []
-        citation = []
-
-        for pub in author['publications']:
-            titles.append(pub['bib']['title'])
-            years.append(pub['bib'].get('pub_year'))
-            citation.append(pub['bib'].get('citation', '').lower())
+        titles = [pub['bib']['title'] for pub in author['publications']]
+        years = [pub['bib'].get('pub_year') for pub in author['publications']]
+        citation = [pub['bib'].get('citation', '').lower() for pub in author['publications']]
 
         df = pd.DataFrame({
             'Author': [author_name] * len(author['publications']),
             'Title': titles,
             'Publication Year': years,
             'Citation': citation,
-            'Institution_Name': institution_name  # Added institution name
+            'Institution_Name': institution_name
         })
 
         return df
     except StopIteration:
         print(f"Author not found: {author_name}")
-        return pd.DataFrame()  # Return an empty DataFrame if no results are found
+        return pd.DataFrame()
     except Exception as e:
         print(f"Error processing {author_name}: {e}")
-        return pd.DataFrame()  # Return an empty DataFrame in case of error
+        return pd.DataFrame()
 
 def generate_author_summary(df, author):
     filtered_df = df[df['Author'] == author]
@@ -69,9 +114,10 @@ def generate_author_summary(df, author):
     ]
     summary = f"{author} made significant contributions to their field with several impactful publications. "
     for i, (title, citation) in enumerate(zip(titles, citations)):
-        phrase = intro_phrases[i % len(intro_phrases)]  # Cycle through phrases
+        phrase = intro_phrases[i % len(intro_phrases)]
         summary += f"{phrase} '{title}', which appeared in {citation}. "
     summary += f"These publications underscore {author}'s commitment to advancing research in their domain, particularly in areas such as {', '.join([title.split(':')[0].lower() for title in titles[:2]])}, and other related fields."
+
     SYSTEM_PROMPT = "Your name is Summarize AI. Your task is to Summarize the context."
 
     chat = model.start_chat(history=[{"role": "model", "parts": [SYSTEM_PROMPT]}])
@@ -114,11 +160,9 @@ def upload():
 
     if file:
         try:
-            # Read the uploaded CSV file
             df = pd.read_csv(file)
             combined_df = pd.DataFrame()
 
-            # Process each author in the CSV file
             institution_name = df['Institution_Name'].iloc[0] if 'Institution_Name' in df.columns else ''
             author_list = df['Author'].tolist()
 
@@ -128,12 +172,10 @@ def upload():
             for result in results:
                 combined_df = pd.concat([combined_df, result], ignore_index=True)
 
-            # Save the dataframe as a global variable and HTML table
             global processed_df, results_html
             processed_df = combined_df
             results_html = combined_df.to_html(classes='table dataTable', index=False)
 
-            # Redirect to results page
             return redirect(url_for('results'))
 
         except Exception as e:
@@ -184,6 +226,24 @@ def download():
     csv_buffer.seek(0)
     
     return send_file(csv_buffer, as_attachment=True, download_name='results.csv', mimetype='text/csv')
+
+@app.route('/view_analysis', methods=['POST'])
+def view_analysis():
+    global processed_df
+    
+    if processed_df is None:
+        return jsonify({'analysis': 'No data available for analysis.'})
+
+    # Get unique authors from the processed DataFrame
+    authors = processed_df['Author'].unique().tolist()
+
+    analysis_dfs = [d_analysis(author) for author in authors]
+    combined_analysis_df = pd.concat(analysis_dfs, ignore_index=True)
+
+    return jsonify({
+        'analysis': combined_analysis_df.to_html(classes='table dataTable', index=False),
+        'chart_data': combined_analysis_df['Author'].value_counts().to_dict()
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
