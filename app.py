@@ -15,7 +15,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 app.secret_key = 'supersecretkey'  # Ensure you have a secret key for sessions and flash messages
 
 # Initialize Google Generative AI
-genai.configure(api_key="AIzaSyDJkX7rIew0l3siFeVYZAIh2xNVGsavmRk") # Replace with your actual API key
+genai.configure(api_key="AIzaSyAbmToOeRI8IRztaZiFALznuCv9wHvQIS0") # Replace with your actual API key
 model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # Global variables
@@ -117,7 +117,7 @@ def generate_author_summary(df, author):
         phrase = intro_phrases[i % len(intro_phrases)]
         summary += f"{phrase} '{title}', which appeared in {citation}. "
     summary += f"These publications underscore {author}'s commitment to advancing research in their domain, particularly in areas such as {', '.join([title.split(':')[0].lower() for title in titles[:2]])}, and other related fields."
-
+    #print(summary)
     SYSTEM_PROMPT = "Your name is Summarize AI. Your task is to Summarize the context."
 
     chat = model.start_chat(history=[{"role": "model", "parts": [SYSTEM_PROMPT]}])
@@ -244,6 +244,65 @@ def view_analysis():
         'analysis': combined_analysis_df.to_html(classes='table dataTable', index=False),
         'chart_data': combined_analysis_df['Author'].value_counts().to_dict()
     })
+
+import re
+
+def filter_dataframe(query):
+    global processed_df
+    if processed_df is None:
+        return "No data available. Please upload a CSV file first."
+    
+    query = query.lower()
+
+    # Match "papers by {author} published after {year}"
+    match = re.search(r'papers by (.+) published after (\d+)', query)
+    if match:
+        author, year = match.groups()
+        year = int(year)
+        filtered_df = processed_df[
+            (processed_df['Author'].str.lower() == author.lower()) &
+            (processed_df['Publication Year'] > year)
+        ]
+        return filtered_df.to_dict(orient='records') if not filtered_df.empty else "No results found."
+
+    # Match "how many papers did {author} publish"
+    match = re.search(r'how many papers did (.+) publish', query)
+    if match:
+        author = match.group(1)
+        count = processed_df[processed_df['Author'].str.lower() == author.lower()].shape[0]
+        return f"{author} has published {count} papers."
+
+    # Match "h-index of {author}"
+    match = re.search(r'h-index of (.+)', query)
+    if match:
+        author = match.group(1)
+        return f"The H-index of {author} is not stored in the dataset."
+
+    return "I couldn't understand your query. Please try a different format."
+
+@app.route('/chatbot', methods=['POST'])
+def chatbot():
+    user_query = request.json.get('query', '').strip()
+    if not user_query:
+        return jsonify({'response': 'Please enter a valid query.'})
+
+    # First, try structured query processing
+    response = filter_dataframe(user_query)
+
+    # If the structured query fails, use Gemini AI for natural language understanding
+    if "I couldn't understand" in response or "No results" in response:
+        SYSTEM_PROMPT = "You are an AI assistant specializing in research publications. Answer user queries based on the given dataset."
+        chat = model.start_chat(history=[{"role": "model", "parts": [SYSTEM_PROMPT]}])
+        
+        ai_response = chat.send_message(f"Based on the research dataset, answer this question: {user_query}", stream=True)
+        final_response = ""
+        for chunk in ai_response:
+            final_response += chunk.text
+
+        response = final_response if final_response else "I couldn't process your query."
+
+    return jsonify({'response': response})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
